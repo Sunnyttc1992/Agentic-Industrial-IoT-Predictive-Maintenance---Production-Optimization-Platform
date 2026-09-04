@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Industrial telemetry event",
+  "type": "object",
+  "required": ["timestamp", "machine_id", "temperature_c", "vibration_mm_s", "pressure_bar", "power_kw", "rpm"],
+  "properties": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "machine_id": { "type": "string" },
+    "temperature_c": { "type": "number" },
+    "vibration_mm_s": { "type": "number" },
+    "pressure_bar": { "type": "number" },
+    "power_kw": { "type": "number" },
+    "rpm": { "type": "integer" },
+    "health_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "status": { "enum": ["healthy", "warning", "critical"] }
+  }
+}

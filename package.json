@@ -1,0 +1,15 @@
+{
+  "name": "industrial-iot-simulator",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "start": "node edge/simulator/server.js",
+    "mqtt:publish": "node edge/publisher/mqtt-publisher.js",
+    "mqtt:gateway": "node edge/gateway/iot-gateway.js",
+    "aws:bridge": "node cloud/aws/aws-iot-bridge.js",
+    "mqtt:subscribe": "node edge/tools/mqtt-subscriber.js"
+  },
+  "dependencies": {
+    "mqtt": "^5.10.4"
+  }
+}

@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Industrial IoT Core rule forwarding processed telemetry to Kinesis Data Streams.
+
+Parameters:
+  StreamName:
+    Type: String
+    Default: industrial-iot-telemetry
+    AllowedPattern: '^[a-zA-Z0-9_.-]+$'
+  IotTopicFilter:
+    Type: String
+    Default: factory/processed/telemetry/#
+
+Resources:
+  TelemetryStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Ref StreamName
+      StreamModeDetails:
+        StreamMode: ON_DEMAND
+
+  IotKinesisRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: iot.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: put-telemetry-to-kinesis
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: kinesis:PutRecord
+                Resource: !GetAtt TelemetryStream.Arn
+
+  GatewayPublishPolicy:
+    Type: AWS::IoT::Policy
+    Properties:
+      PolicyName: !Sub '${AWS::StackName}-gateway-publish'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: iot:Connect
+            Resource: !Sub 'arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:client/gateway-*'
+          - Effect: Allow
+            Action: iot:Publish
+            Resource: !Sub 'arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/factory/processed/telemetry/*'
+
+  ProcessedTelemetryToKinesisRule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      TopicRulePayload:
+        AwsIotSqlVersion: '2016-03-23'
+        Sql: !Sub "SELECT *, topic() AS mqtt_topic FROM '${IotTopicFilter}'"
+        RuleDisabled: false
+        Actions:
+          - Kinesis:
+              StreamName: !Ref TelemetryStream
+              PartitionKey: '${topic()}'
+              RoleArn: !GetAtt IotKinesisRole.Arn
+
+Outputs:
+  KinesisStreamName:
+    Value: !Ref TelemetryStream
+  GatewayIotPolicyName:
+    Value: !Ref GatewayPublishPolicy
+  IotRuleName:
+    Value: !Ref ProcessedTelemetryToKinesisRule

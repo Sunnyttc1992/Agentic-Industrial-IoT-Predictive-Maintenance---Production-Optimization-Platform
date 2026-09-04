@@ -1,0 +1,5 @@
+node_modules/
+certs/
+.env
+.env.aws
+__pycache__/

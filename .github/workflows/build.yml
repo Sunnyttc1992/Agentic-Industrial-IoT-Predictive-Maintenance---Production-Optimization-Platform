@@ -1,0 +1,7 @@
+name: Build
+on: [push]
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Container build is added with deployable services."
