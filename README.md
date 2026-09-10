@@ -53,6 +53,25 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/machines
 
 The API runs at `http://127.0.0.1:8000`.
 
+## Operations console
+
+The Phase 6 application layer exposes latest validated telemetry, model
+predictions, actionable alerts, and human-reviewed agent recommendations.
+
+```powershell
+python -m uvicorn src.api.main:app --reload
+```
+
+Open `http://127.0.0.1:8000` for the local dashboard or
+`http://127.0.0.1:8000/docs` for the interactive API. The application is
+decision-support only: acknowledging an alert or approving a recommendation
+never sends a command to equipment.
+
+With `REALTIME_MQTT_ENABLED=true` in `.env`, the API also subscribes to the
+Python simulator's AWS IoT Core topic and sends each validated analytics update
+to the browser over WebSockets. See [the application runbook](apps/README.md)
+for the two-terminal command sequence and required AWS IoT permissions.
+
 ## MQTT streaming
 
 First start a local MQTT broker (Docker Desktop required):

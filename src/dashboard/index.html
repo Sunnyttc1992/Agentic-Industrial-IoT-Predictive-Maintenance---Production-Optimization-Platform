@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#070b12" />
+    <title>Industrial IoT Operations Console</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #070b12; --sidebar: #0a0f18; --surface: #0d141f; --surface-raised: #111b29;
+        --surface-soft: #121d2a; --line: #1d2a39; --line-strong: #2a394b; --text: #f2f5f7;
+        --muted: #8492a6; --muted-strong: #aab5c4; --cyan: #44d7d0; --cyan-soft: rgba(68, 215, 208, .12);
+        --lime: #b5e853; --amber: #ffbf69; --red: #ff6b6b; --blue: #72a7ff; --shadow: 0 18px 50px rgba(0, 0, 0, .2);
+        --font-sans: Inter, Aptos, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+        --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0; min-width: 320px; color: var(--text); -webkit-font-smoothing: antialiased;
+        background: radial-gradient(circle at 75% 0%, rgba(45, 102, 112, .13), transparent 28rem), var(--bg);
+        font: 14px/1.5 var(--font-sans);
+      }
+      button, input, textarea { font: inherit; }
+      button { color: inherit; }
+      a { color: inherit; text-decoration: none; }
+      h1, h2, h3, p { margin: 0; }
+      svg { display: block; }
+      .app-shell { min-height: 100vh; }
+      .sidebar {
+        position: fixed; inset: 0 auto 0 0; z-index: 20; display: flex; width: 236px; flex-direction: column;
+        border-right: 1px solid var(--line); background: rgba(10, 15, 24, .93); backdrop-filter: blur(18px);
+      }
+      .brand { display: flex; align-items: center; gap: 11px; height: 78px; padding: 0 22px; border-bottom: 1px solid var(--line); }
+      .brand-mark {
+        display: grid; width: 35px; height: 35px; place-items: center; border: 1px solid rgba(68, 215, 208, .32);
+        border-radius: 10px; background: var(--cyan-soft); color: var(--cyan);
+      }
+      .brand-copy strong { display: block; font-size: 14px; letter-spacing: -.01em; }
+      .brand-copy span { color: var(--muted); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+      .nav { display: grid; gap: 5px; padding: 22px 13px; }
+      .nav-label { padding: 0 10px 8px; color: #59687b; font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+      .nav a {
+        display: flex; align-items: center; gap: 11px; padding: 10px 11px; border: 1px solid transparent;
+        border-radius: 8px; color: var(--muted-strong); font-size: 13px; font-weight: 600; transition: 160ms ease;
+      }
+      .nav a svg { width: 17px; height: 17px; }
+      .nav a:hover { background: var(--surface-raised); color: var(--text); }
+      .nav a.active { border-color: #243649; background: #13202e; color: var(--cyan); }
+      .nav-count {
+        min-width: 22px; margin-left: auto; padding: 1px 6px; border-radius: 999px; background: rgba(255, 107, 107, .14);
+        color: #ff8a8a; font: 700 10px/18px var(--font-mono); text-align: center;
+      }
+      .sidebar-footer { margin-top: auto; padding: 15px; }
+      .system-card { padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: #0c131e; }
+      .system-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+      .system-card-head strong { font-size: 11px; }
+      .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 4px rgba(132, 146, 166, .1); }
+      .live-dot.connected { background: var(--cyan); box-shadow: 0 0 0 4px var(--cyan-soft); }
+      .system-card p { min-height: 36px; color: var(--muted); font-size: 11px; }
+      .system-meta { display: flex; justify-content: space-between; margin-top: 10px; color: #647286; font: 10px var(--font-mono); }
+      .workspace { min-width: 0; margin-left: 236px; }
+      .topbar {
+        position: sticky; top: 0; z-index: 15; display: flex; min-height: 78px; align-items: center; justify-content: space-between; gap: 24px;
+        padding: 14px clamp(20px, 3vw, 42px); border-bottom: 1px solid var(--line); background: rgba(7, 11, 18, .84); backdrop-filter: blur(16px);
+      }
+      .breadcrumbs { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; color: var(--muted); font-size: 11px; }
+      .breadcrumbs span:last-child { color: var(--cyan); }
+      .topbar h1 { font-size: clamp(19px, 2vw, 24px); line-height: 1.25; letter-spacing: -.035em; }
+      .topbar-actions { display: flex; align-items: center; gap: 10px; }
+      .site-selector { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted-strong); font-size: 12px; }
+      .site-selector b { color: var(--text); font-weight: 600; }
+      .button {
+        display: inline-flex; min-height: 36px; align-items: center; justify-content: center; gap: 8px; padding: 8px 13px;
+        border: 1px solid var(--line-strong); border-radius: 8px; background: #121c29; color: var(--muted-strong); cursor: pointer; font-weight: 600; transition: 160ms ease;
+      }
+      .button svg { width: 15px; height: 15px; }
+      .button:hover { transform: translateY(-1px); border-color: #3a5068; background: #172433; color: var(--text); }
+      .button:focus-visible, .icon-button:focus-visible, .nav a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+      .button.primary { border-color: #49ddd5; background: var(--cyan); color: #061413; }
+      .button.primary:hover { background: #66e7df; color: #061413; }
+      .button.danger { border-color: rgba(255, 107, 107, .3); color: #ff9292; }
+      .button.small { min-height: 30px; padding: 5px 9px; font-size: 11px; }
+      .button.loading { pointer-events: none; opacity: .62; }
+      .button:disabled { cursor: not-allowed; opacity: .56; }
+      .icon-button { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted-strong); cursor: pointer; }
+      .icon-button:hover { color: var(--text); }
+      main { display: grid; gap: 20px; max-width: 1700px; margin: 0 auto; padding: 28px clamp(20px, 3vw, 42px) 48px; }
+      .hero-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+      .eyebrow { margin-bottom: 7px; color: var(--cyan); font: 700 10px var(--font-mono); letter-spacing: .14em; text-transform: uppercase; }
+      .hero-row h2 { font-size: clamp(25px, 3vw, 34px); letter-spacing: -.045em; }
+      .hero-row .subtitle { max-width: 620px; margin-top: 7px; color: var(--muted); }
+      .last-updated { color: var(--muted); font: 11px var(--font-mono); white-space: nowrap; }
+      .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+      .stat {
+        position: relative; min-height: 142px; overflow: hidden; padding: 18px; border: 1px solid var(--line); border-radius: 11px;
+        background: linear-gradient(145deg, rgba(18, 29, 42, .92), rgba(12, 19, 29, .94)); box-shadow: var(--shadow);
+      }
+      .stat::after { position: absolute; right: -35px; bottom: -55px; width: 120px; height: 120px; border-radius: 50%; background: var(--accent-soft, var(--cyan-soft)); content: ""; filter: blur(2px); }
+      .stat-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .stat-label { color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+      .stat-icon { display: grid; width: 31px; height: 31px; place-items: center; border-radius: 8px; background: var(--accent-soft, var(--cyan-soft)); color: var(--accent, var(--cyan)); }
+      .stat-icon svg { width: 16px; height: 16px; }
+      .stat-value { display: flex; align-items: baseline; gap: 8px; margin-top: 14px; }
+      .stat-value strong { font: 700 clamp(28px, 3vw, 36px)/1 var(--font-mono); letter-spacing: -.07em; }
+      .stat-value span { color: var(--muted); font-size: 11px; }
+      .stat-caption { margin-top: 10px; color: #647286; font-size: 11px; }
+      .stat-caption.good { color: var(--lime); }
+      .stat-caption.warn { color: var(--amber); }
+      .stat.alert-stat { --accent: var(--red); --accent-soft: rgba(255, 107, 107, .11); }
+      .stat.fault-stat { --accent: var(--amber); --accent-soft: rgba(255, 191, 105, .1); }
+      .stat.review-stat { --accent: var(--blue); --accent-soft: rgba(114, 167, 255, .1); }
+      .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .75fr); gap: 18px; align-items: start; }
+      .stack { display: grid; gap: 18px; min-width: 0; }
+      .panel { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: rgba(13, 20, 31, .94); box-shadow: var(--shadow); }
+      .panel-head { display: flex; min-height: 59px; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 17px; border-bottom: 1px solid var(--line); }
+      .panel-title { display: flex; align-items: center; gap: 10px; }
+      .panel-title h3 { font-size: 14px; letter-spacing: -.01em; }
+      .panel-kicker { margin-top: 2px; color: var(--muted); font-size: 10px; }
+      .panel-icon { color: var(--cyan); }
+      .panel-icon svg { width: 17px; height: 17px; }
+      .panel-meta { color: var(--muted); font: 10px var(--font-mono); text-align: right; }
+      .panel-body { padding: 16px; }
+      .table-wrap { width: 100%; overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 13px 14px; text-align: left; white-space: nowrap; }
+      th { border-bottom: 1px solid var(--line); background: rgba(9, 15, 23, .52); color: #66768a; font: 700 9px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+      td { border-bottom: 1px solid rgba(29, 42, 57, .76); color: var(--muted-strong); font-size: 12px; }
+      tbody tr { transition: background 140ms ease; }
+      tbody tr:hover { background: rgba(68, 215, 208, .025); }
+      tbody tr:last-child td { border-bottom: 0; }
+      .machine-cell { display: flex; align-items: center; gap: 10px; }
+      .machine-mark { display: grid; width: 29px; height: 29px; place-items: center; border: 1px solid #25364a; border-radius: 7px; background: #121d2a; color: var(--cyan); font: 700 9px var(--font-mono); }
+      .machine-cell strong { display: block; color: var(--text); font-size: 12px; }
+      .machine-cell small { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; }
+      .metric { color: var(--text); font: 11px var(--font-mono); }
+      .metric small { color: var(--muted); font: 9px var(--font-sans); }
+      .timestamp { color: var(--muted); font-size: 10px; }
+      .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: 1px solid transparent; border-radius: 999px; font: 700 9px var(--font-mono); letter-spacing: .03em; text-transform: uppercase; }
+      .badge::before { width: 5px; height: 5px; border-radius: 50%; background: currentColor; content: ""; }
+      .badge.normal, .badge.running, .badge.approved, .badge.connected, .badge.acknowledged { border-color: rgba(181, 232, 83, .16); background: rgba(181, 232, 83, .08); color: var(--lime); }
+      .badge.warning, .badge.pending, .badge.open { border-color: rgba(255, 191, 105, .18); background: rgba(255, 191, 105, .09); color: var(--amber); }
+      .badge.critical, .badge.rejected, .badge.fault { border-color: rgba(255, 107, 107, .2); background: rgba(255, 107, 107, .1); color: var(--red); }
+      .badge.unknown { border-color: var(--line-strong); background: var(--surface-soft); color: var(--muted-strong); }
+      .risk-cell { min-width: 120px; }
+      .risk-copy { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+      .risk-copy strong { color: var(--text); font: 700 10px var(--font-mono); }
+      .risk-copy span { color: var(--muted); font-size: 9px; }
+      .risk-track { height: 4px; overflow: hidden; border-radius: 99px; background: #1a2634; }
+      .risk-track span { display: block; height: 100%; border-radius: inherit; background: var(--cyan); }
+      .risk-track span.medium { background: var(--amber); }
+      .risk-track span.high { background: var(--red); }
+      .alerts-list { display: grid; gap: 9px; }
+      .alert-card { padding: 13px; border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 8px; background: #101925; }
+      .alert-card.critical { border-left-color: var(--red); }
+      .alert-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .alert-card h4 { margin: 0 0 3px; color: var(--text); font-size: 12px; }
+      .alert-card p { color: var(--muted); font-size: 10px; }
+      .alert-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+      .alert-rules { max-width: 67%; color: #68778a; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .intelligence-placeholder { display: grid; min-height: 235px; place-items: center; padding: 30px; text-align: center; }
+      .placeholder-orb { display: grid; width: 53px; height: 53px; margin: 0 auto 15px; place-items: center; border: 1px solid rgba(68, 215, 208, .2); border-radius: 15px; background: var(--cyan-soft); color: var(--cyan); }
+      .placeholder-orb svg { width: 23px; height: 23px; }
+      .intelligence-placeholder h4 { margin: 0 0 6px; font-size: 13px; }
+      .intelligence-placeholder p { max-width: 320px; color: var(--muted); font-size: 11px; }
+      .analysis-view { padding: 16px; }
+      .analysis-summary { margin-bottom: 13px; padding: 13px; border: 1px solid #24374b; border-radius: 8px; background: #0a121d; }
+      .analysis-summary strong { display: block; margin-bottom: 5px; color: var(--cyan); font: 700 10px var(--font-mono); text-transform: uppercase; }
+      .analysis-summary p { color: var(--muted-strong); font-size: 11px; }
+      details { border-top: 1px solid var(--line); }
+      summary { padding: 11px 0; color: var(--muted-strong); cursor: pointer; font-size: 11px; font-weight: 600; }
+      pre { max-height: 260px; margin: 0; overflow: auto; color: #98aec5; font: 10px/1.65 var(--font-mono); white-space: pre-wrap; }
+      .approval-list { display: grid; gap: 9px; }
+      .approval-card { display: grid; gap: 11px; padding: 13px; border: 1px solid var(--line); border-radius: 8px; background: #101925; }
+      .approval-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .approval-head strong { display: block; font-size: 12px; }
+      .approval-head small { color: var(--muted); font-size: 9px; }
+      .approval-actions { display: flex; gap: 7px; }
+      .empty-state { display: grid; min-height: 150px; place-items: center; padding: 30px; color: var(--muted); text-align: center; }
+      .empty-state svg { width: 23px; height: 23px; margin: 0 auto 10px; color: #4d6075; }
+      .empty-state p { font-size: 11px; }
+      .modal-backdrop { position: fixed; inset: 0; z-index: 100; display: none; place-items: center; padding: 20px; background: rgba(2, 5, 9, .76); backdrop-filter: blur(6px); }
+      .modal-backdrop.open { display: grid; }
+      .modal { width: min(450px, 100%); overflow: hidden; border: 1px solid var(--line-strong); border-radius: 12px; background: #0e1722; box-shadow: 0 30px 90px rgba(0, 0, 0, .5); }
+      .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 17px 18px; border-bottom: 1px solid var(--line); }
+      .modal-head h3 { font-size: 15px; }
+      .modal-body { display: grid; gap: 14px; padding: 18px; }
+      .modal-body > p { color: var(--muted); font-size: 11px; }
+      .field { display: grid; gap: 6px; }
+      .field label { color: var(--muted-strong); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+      .field input, .field textarea { width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; outline: 0; background: #09111b; color: var(--text); padding: 10px 11px; }
+      .field textarea { min-height: 78px; resize: vertical; }
+      .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 18px 18px; }
+      .toast-region { position: fixed; right: 20px; bottom: 20px; z-index: 120; display: grid; gap: 8px; }
+      .toast { min-width: 260px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 9px; background: #13202e; box-shadow: var(--shadow); color: var(--muted-strong); font-size: 11px; animation: toast-in 180ms ease-out; }
+      .toast.success { border-color: rgba(68, 215, 208, .3); }
+      .toast.error { border-color: rgba(255, 107, 107, .34); color: #ff9b9b; }
+      @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .spin { animation: spin .8s linear infinite; }
+      @media (max-width: 1120px) {
+        .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dashboard-grid { grid-template-columns: 1fr; }
+        .right-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 760px) {
+        .sidebar { position: static; width: 100%; border-right: 0; border-bottom: 1px solid var(--line); }
+        .brand { height: 64px; padding: 0 17px; }
+        .nav { display: flex; overflow-x: auto; padding: 9px 12px; }
+        .nav-label, .sidebar-footer { display: none; }
+        .nav a { flex: 0 0 auto; padding: 8px 10px; }
+        .workspace { margin-left: 0; }
+        .topbar { position: static; min-height: 66px; padding: 12px 17px; }
+        .breadcrumbs, .site-selector { display: none; }
+        main { padding: 22px 15px 36px; }
+        .hero-row { align-items: flex-start; flex-direction: column; gap: 9px; }
+        .stats { grid-template-columns: 1fr 1fr; }
+        .stat { min-height: 130px; padding: 15px; }
+        .stat-value strong { font-size: 27px; }
+        .right-stack { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 480px) {
+        .stats { grid-template-columns: 1fr; }
+        .stat { min-height: 118px; }
+        .topbar-actions .button span { display: none; }
+        .approval-actions { flex-wrap: wrap; }
+      }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <a class="brand" href="#overview" aria-label="Nexus Operations home">
+          <span class="brand-mark" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17V7l8-4 8 4v10l-8 4-8-4Z"/><path d="m4 7 8 4 8-4M12 21V11"/></svg></span>
+          <span class="brand-copy"><strong>Nexus Operations</strong><span>Industrial intelligence</span></span>
+        </a>
+        <nav class="nav">
+          <span class="nav-label">Command center</span>
+          <a class="active" href="#overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</a>
+          <a href="#fleet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11h18M5 11V6h14v5M6 15h.01M18 15h.01M5 19h14a2 2 0 0 0 2-2v-6H3v6a2 2 0 0 0 2 2Z"/></svg>Asset fleet</a>
+          <a href="#alerts-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>Alerts <span id="nav-alert-count" class="nav-count">0</span></a>
+          <a href="#intelligence"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9.5 4.5 12 2l2.5 2.5L18 4v4l3 2-2 3 1 3.5-4 .5-1 4-3-2-3 2-1-4-4-.5L5 13l-2-3 3-2V4l3.5.5Z"/><circle cx="12" cy="11.5" r="3"/></svg>Agent intelligence</a>
+          <a href="#reviews"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11 12 14 22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Reviews</a>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="system-card">
+            <div class="system-card-head"><strong>System status</strong><span id="live-dot" class="live-dot"></span></div>
+            <p id="live-status" aria-live="polite">Connecting to operations feed…</p>
+            <div class="system-meta"><span>API v0.7</span><span id="clock">--:--:--</span></div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <div><div class="breadcrumbs"><span>Operations</span><span>/</span><span>Live overview</span></div><h1>Operations command center</h1></div>
+          <div class="topbar-actions">
+            <div class="site-selector"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V9l7-4v16M12 9l7-3v15M8 13h1M8 17h1M15 11h1M15 15h1"/></svg><b>Plant 01</b><span>· East</span></div>
+            <button id="refresh" class="button" type="button"><svg id="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6v5h-5M4 18v-5h5"/><path d="M6.1 9a7 7 0 0 1 11.5-2.6L20 11M4 13l2.4 4.6A7 7 0 0 0 17.9 15"/></svg><span>Sync data</span></button>
+          </div>
+        </header>
+
+        <main id="overview">
+          <section class="hero-row" aria-labelledby="overview-title">
+            <div><p class="eyebrow">Live operational picture</p><h2 id="overview-title">Good <span id="greeting-time">morning</span>, operator.</h2><p class="subtitle">Monitor asset health, investigate model signals, and review agent recommendations across the production floor.</p></div>
+            <p id="data-status" class="last-updated">Preparing telemetry…</p>
+          </section>
+          <section class="stats" aria-label="Operational summary">
+            <article class="stat">
+              <div class="stat-top"><span class="stat-label">Fleet availability</span><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9l8-4 8 4v10M8 19v-6h8v6M2 19h20"/></svg></span></div>
+              <div class="stat-value"><strong id="machine-count">—</strong><span>assets</span></div><p id="machine-caption" class="stat-caption">Loading validated telemetry</p>
+            </article>
+            <article class="stat fault-stat">
+              <div class="stat-top"><span class="stat-label">Predictive risk</span><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16M7 15l4-4 3 2 5-7"/></svg></span></div>
+              <div class="stat-value"><strong id="fault-count">—</strong><span>flagged</span></div><p id="fault-caption" class="stat-caption">Awaiting model output</p>
+            </article>
+            <article class="stat alert-stat">
+              <div class="stat-top"><span class="stat-label">Open alerts</span><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span></div>
+              <div class="stat-value"><strong id="alert-count">—</strong><span>active</span></div><p id="alert-caption" class="stat-caption">No alert data received</p>
+            </article>
+            <article class="stat review-stat">
+              <div class="stat-top"><span class="stat-label">Human review</span><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11 12 14 22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span></div>
+              <div class="stat-value"><strong id="approval-count">—</strong><span>pending</span></div><p id="approval-caption" class="stat-caption">Agent actions remain gated</p>
+            </article>
+          </section>
+          <section class="dashboard-grid">
+            <div class="stack">
+              <article id="fleet" class="panel">
+                <div class="panel-head">
+                  <div class="panel-title"><span class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11h18M5 11V6h14v5M6 15h.01M18 15h.01M5 19h14a2 2 0 0 0 2-2v-6H3v6a2 2 0 0 0 2 2Z"/></svg></span><div><h3>Fleet telemetry</h3><p class="panel-kicker">Latest quality-validated readings</p></div></div><span id="fleet-meta" class="panel-meta">0 assets reporting</span>
+                </div>
+                <div class="table-wrap"><table><thead><tr><th>Machine</th><th>Status</th><th>Temperature</th><th>Vibration</th><th>Current</th><th>Pressure</th><th>RPM</th><th>Updated</th><th></th></tr></thead><tbody id="machines"><tr><td colspan="9"><div class="empty-state"><p>Loading fleet telemetry…</p></div></td></tr></tbody></table></div>
+              </article>
+              <article class="panel">
+                <div class="panel-head">
+                  <div class="panel-title"><span class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16M7 15l4-4 3 2 5-7"/></svg></span><div><h3>Predictive model signals</h3><p class="panel-kicker">Latest supervised classifier output</p></div></div><span class="panel-meta">FAULT CLASSIFIER</span>
+                </div>
+                <div id="predictions" class="panel-body"><div class="empty-state"><p>Loading predictions…</p></div></div>
+              </article>
+            </div>
+            <div class="stack right-stack">
+              <article id="alerts-panel" class="panel">
+                <div class="panel-head">
+                  <div class="panel-title"><span class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span><div><h3>Attention queue</h3><p class="panel-kicker">Rules requiring operator awareness</p></div></div><span id="alerts-meta" class="panel-meta">0 OPEN</span>
+                </div>
+                <div id="alerts" class="panel-body"><div class="empty-state"><p>Loading actionable alerts…</p></div></div>
+              </article>
+              <article id="intelligence" class="panel">
+                <div class="panel-head">
+                  <div class="panel-title"><span class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9.5 4.5 12 2l2.5 2.5L18 4v4l3 2-2 3 1 3.5-4 .5-1 4-3-2-3 2-1-4-4-.5L5 13l-2-3 3-2V4l3.5.5Z"/><circle cx="12" cy="11.5" r="3"/></svg></span><div><h3>Agent intelligence</h3><p class="panel-kicker">Supervisor analysis and recommendations</p></div></div><span class="panel-meta">HUMAN IN THE LOOP</span>
+                </div>
+                <div id="analysis" aria-live="polite"><div class="intelligence-placeholder"><div><span class="placeholder-orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 9h8M8 13h5M6 3h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5l-4 3v-3H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg></span><h4>Ready to investigate</h4><p>Select <strong>Analyze</strong> beside any machine to run the agent supervisor on its latest telemetry.</p></div></div></div>
+              </article>
+              <article id="reviews" class="panel">
+                <div class="panel-head">
+                  <div class="panel-title"><span class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11 12 14 22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><div><h3>Human reviews</h3><p class="panel-kicker">Decision-support approvals only</p></div></div><span class="panel-meta">NO AUTO-ACTUATION</span>
+                </div>
+                <div id="approvals" class="panel-body"><div class="empty-state"><p>Loading review records…</p></div></div>
+              </article>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+    <div id="modal-backdrop" class="modal-backdrop" role="presentation">
+      <form id="action-form" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-head"><h3 id="modal-title">Confirm action</h3><button id="modal-close" class="icon-button" type="button" aria-label="Close dialog">×</button></div>
+        <div class="modal-body"><p id="modal-description">Enter the required review details.</p><div class="field"><label for="operator-name">Operator name</label><input id="operator-name" name="operator" maxlength="120" autocomplete="name" required placeholder="e.g. Alex Morgan" /></div><div class="field"><label for="operator-note">Note <span style="color:var(--muted);font-weight:400">(optional)</span></label><textarea id="operator-note" name="note" maxlength="1000" placeholder="Add context for the operations log"></textarea></div></div>
+        <div class="modal-actions"><button id="modal-cancel" class="button" type="button">Cancel</button><button id="modal-submit" class="button primary" type="submit">Confirm</button></div>
+      </form>
+    </div>
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+    <script>
+      const state = { machines: [], alerts: [], approvals: [], predictions: [], socket: null, reconnectTimer: null, activeAction: null, lastUpdated: null, approvalLimit: 6 };
+      const $ = (id) => document.getElementById(id);
+      const escapeHtml = (value) => String(value ?? "—").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", "\"": "&quot;" })[char]);
+      const icon = (name) => ({
+        inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v16H4zM4 14h4l2 3h4l2-3h4"/></svg>',
+        check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m5 12 4 4L19 6"/></svg>',
+        alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 2 21h20L12 3ZM12 9v5M12 18h.01"/></svg>',
+      }[name] || "");
+      function safeClass(value) {
+        const normalized = String(value || "unknown").toLowerCase();
+        return ["normal", "running", "approved", "connected", "acknowledged", "warning", "pending", "open", "critical", "rejected", "fault"].includes(normalized) ? normalized : "unknown";
+      }
+      const badge = (value) => `<span class="badge ${safeClass(value)}">${escapeHtml(value || "Unknown")}</span>`;
+      const formatNumber = (value, digits = 1) => Number.isFinite(Number(value)) ? Number(value).toLocaleString(undefined, { maximumFractionDigits: digits }) : "—";
+      const formatTimestamp = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+      const relativeTime = (value) => {
+        if (!value) return "No timestamp";
+        const seconds = Math.round((new Date(value).getTime() - Date.now()) / 1000), abs = Math.abs(seconds);
+        if (abs < 60) return "Just now";
+        if (abs < 3600) return `${Math.round(abs / 60)}m ago`;
+        if (abs < 86400) return `${Math.round(abs / 3600)}h ago`;
+        return formatTimestamp(value);
+      };
+      const emptyState = (message, kind = "inbox") => `<div class="empty-state">${icon(kind)}<p>${escapeHtml(message)}</p></div>`;
+      async function fetchJson(path, options) {
+        const response = await fetch(path, options), payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.detail || response.statusText || "Request failed");
+        return payload;
+      }
+      function showToast(message, type = "success") {
+        const toast = document.createElement("div"); toast.className = `toast ${type}`; toast.textContent = message; $("toast-region").appendChild(toast); window.setTimeout(() => toast.remove(), 3600);
+      }
+      function renderMachines() {
+        const running = state.machines.filter((machine) => String(machine.status).toUpperCase() === "RUNNING").length;
+        $("machine-count").textContent = state.machines.length;
+        $("machine-caption").textContent = state.machines.length ? `${running} reporting in a running state` : "No validated telemetry available";
+        $("machine-caption").className = `stat-caption ${running === state.machines.length && running ? "good" : ""}`;
+        $("fleet-meta").textContent = `${state.machines.length} asset${state.machines.length === 1 ? "" : "s"} reporting`;
+        $("machines").innerHTML = state.machines.length ? state.machines.map((machine, index) => {
+          const initials = String(machine.machine_id || "MC").split(/[-_]/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+          return `<tr><td><div class="machine-cell"><span class="machine-mark">${escapeHtml(initials)}</span><div><strong>${escapeHtml(machine.machine_id)}</strong><small>Production asset</small></div></div></td><td>${badge(machine.status || "Unknown")}</td><td><span class="metric">${formatNumber(machine.temperature_c)} <small>°C</small></span></td><td><span class="metric">${formatNumber(machine.vibration_mm_s, 2)} <small>mm/s</small></span></td><td><span class="metric">${formatNumber(machine.current_amp)} <small>A</small></span></td><td><span class="metric">${formatNumber(machine.pressure_bar)} <small>bar</small></span></td><td><span class="metric">${formatNumber(machine.rpm, 0)}</span></td><td><span class="timestamp" title="${escapeHtml(formatTimestamp(machine.timestamp))}">${escapeHtml(relativeTime(machine.timestamp))}</span></td><td><button class="button small" type="button" data-machine="${index}">Analyze</button></td></tr>`;
+        }).join("") : `<tr><td colspan="9">${emptyState("No validated Silver telemetry is available.")}</td></tr>`;
+        document.querySelectorAll("[data-machine]").forEach((button) => button.addEventListener("click", () => analyzeMachine(state.machines[Number(button.dataset.machine)], button)));
+      }
+      function renderAlerts() {
+        const openAlerts = state.alerts.filter((alert) => alert.status === "OPEN");
+        $("alert-count").textContent = openAlerts.length; $("nav-alert-count").textContent = openAlerts.length; $("alerts-meta").textContent = `${openAlerts.length} OPEN`;
+        $("alert-caption").textContent = openAlerts.length ? `${openAlerts.filter((alert) => alert.severity === "CRITICAL").length} critical events` : "Attention queue is clear";
+        $("alert-caption").className = `stat-caption ${openAlerts.length ? "warn" : "good"}`;
+        $("alerts").innerHTML = state.alerts.length ? `<div class="alerts-list">${state.alerts.map((alert) => {
+          const rules = Array.isArray(alert.triggered_rules) ? alert.triggered_rules.join(" · ") : "Rule-based detection";
+          return `<article class="alert-card ${safeClass(alert.severity)}"><div class="alert-card-head"><div><h4>${escapeHtml(String(alert.event_type || "Operational alert").replaceAll("_", " "))}</h4><p>${escapeHtml(alert.machine_id)} · ${escapeHtml(relativeTime(alert.timestamp))}</p></div>${badge(alert.severity)}</div><div class="alert-card-footer"><span class="alert-rules" title="${escapeHtml(rules)}">${escapeHtml(rules)}</span>${alert.status === "OPEN" ? `<button class="button small" type="button" data-alert="${escapeHtml(alert.alert_id)}">Acknowledge</button>` : badge(alert.status)}</div></article>`;
+        }).join("")}</div>` : emptyState("No actionable alerts. The attention queue is clear.", "check");
+        document.querySelectorAll("[data-alert]").forEach((button) => button.addEventListener("click", () => openActionModal({ type: "acknowledge", id: button.dataset.alert, title: "Acknowledge alert", description: "Record who reviewed this alert. Acknowledgement does not approve or execute an equipment action.", submitLabel: "Acknowledge" })));
+      }
+      function renderPredictions() {
+        const flagged = state.predictions.filter((prediction) => Number(prediction.predicted_fault) === 1).length;
+        $("fault-count").textContent = flagged;
+        $("fault-caption").textContent = state.predictions.length ? `${state.predictions.length} assets evaluated by model` : "No prediction artifact available";
+        $("fault-caption").className = `stat-caption ${flagged ? "warn" : state.predictions.length ? "good" : ""}`;
+        $("predictions").innerHTML = state.predictions.length ? `<div class="table-wrap"><table><thead><tr><th>Machine</th><th>Risk score</th><th>Predicted condition</th><th>Signal</th></tr></thead><tbody>${state.predictions.map((prediction) => {
+          const risk = Math.max(0, Math.min(100, Number(prediction.fault_probability || 0) * 100)), level = risk >= 70 ? "high" : risk >= 40 ? "medium" : "low", predictedType = prediction.predicted_fault_type || prediction.fault_type || "No fault";
+          return `<tr><td><div class="machine-cell"><div><strong>${escapeHtml(prediction.machine_id)}</strong><small>${escapeHtml(relativeTime(prediction.timestamp))}</small></div></div></td><td><div class="risk-cell"><div class="risk-copy"><strong>${risk.toFixed(1)}%</strong><span>${level.toUpperCase()}</span></div><div class="risk-track"><span class="${level}" style="width:${risk}%"></span></div></div></td><td>${escapeHtml(String(predictedType).replaceAll("_", " "))}</td><td>${Number(prediction.predicted_fault) === 1 ? badge("Warning") : badge("Normal")}</td></tr>`;
+        }).join("")}</tbody></table></div>` : emptyState("No fault prediction artifact is available.");
+      }
+      function renderApprovals() {
+        const pending = state.approvals.filter((approval) => approval.status === "PENDING").length;
+        const visibleApprovals = state.approvals.slice(0, state.approvalLimit);
+        $("approval-count").textContent = pending;
+        $("approval-caption").textContent = pending ? `${pending} recommendation${pending === 1 ? "" : "s"} awaiting a person` : "No decisions waiting on review";
+        $("approval-caption").className = `stat-caption ${pending ? "warn" : "good"}`;
+        $("approvals").innerHTML = state.approvals.length ? `<div class="approval-list">${visibleApprovals.map((approval) => `<article class="approval-card"><div class="approval-head"><div><strong>${escapeHtml(String(approval.event_type || "Recommendation").replaceAll("_", " "))}</strong><small>${escapeHtml(approval.machine_id)} · ${escapeHtml(relativeTime(approval.created_at))}</small></div>${badge(approval.status)}</div>${approval.status === "PENDING" ? `<div class="approval-actions"><button class="button small primary" type="button" data-approval="${escapeHtml(approval.approval_id)}" data-decision="APPROVED">Approve</button><button class="button small danger" type="button" data-approval="${escapeHtml(approval.approval_id)}" data-decision="REJECTED">Reject</button></div>` : `<p class="panel-kicker">Reviewed by ${escapeHtml(approval.reviewer || "Unknown operator")}</p>`}</article>`).join("")}${state.approvals.length > visibleApprovals.length ? `<button id="show-more-approvals" class="button" type="button">Show more · ${state.approvals.length - visibleApprovals.length} remaining</button>` : ""}</div>` : emptyState("No agent recommendations are awaiting review.", "check");
+        document.querySelectorAll("[data-approval]").forEach((button) => button.addEventListener("click", () => {
+          const decision = button.dataset.decision;
+          openActionModal({ type: "approval", id: button.dataset.approval, decision, title: decision === "APPROVED" ? "Approve recommendation" : "Reject recommendation", description: "This records a human decision for audit purposes. It will not actuate equipment.", submitLabel: decision === "APPROVED" ? "Approve" : "Reject" });
+        }));
+        $("show-more-approvals")?.addEventListener("click", () => { state.approvalLimit += 10; renderApprovals(); });
+      }
+      function renderAgentAnalysis(result) {
+        const event = result?.action_event || {}, recommendation = result?.maintenance_recommendation || result?.production_recommendation || {};
+        const summary = recommendation.recommendation || recommendation.summary || recommendation.action || (result?.review_required ? "The supervisor produced a recommendation that requires human review." : "Analysis completed. No human review is required.");
+        $("analysis").innerHTML = `<div class="analysis-view"><div class="analysis-summary"><strong>${escapeHtml(String(event.event_type || "Analysis complete").replaceAll("_", " "))}</strong><p>${escapeHtml(summary)}</p></div><div style="display:flex;gap:7px;margin-bottom:12px">${event.severity ? badge(event.severity) : ""}${result?.review_required ? badge("Pending") : badge("Normal")}</div><details><summary>View full agent trace</summary><pre>${escapeHtml(JSON.stringify(result, null, 2))}</pre></details></div>`;
+      }
+      function renderAll() { renderMachines(); renderAlerts(); renderPredictions(); renderApprovals(); }
+      function upsert(items, item, key = "machine_id") { const index = items.findIndex((current) => current[key] === item[key]); if (index === -1) items.push(item); else items[index] = item; return items.sort((left, right) => String(left[key]).localeCompare(String(right[key]))); }
+      function setLiveStatus(realtime) {
+        const status = realtime?.connection_status || "DISCONNECTED", connected = status === "CONNECTED";
+        $("live-status").textContent = connected ? "Live MQTT feed connected" : `Feed ${status.toLowerCase().replaceAll("_", " ")}`; $("live-dot").classList.toggle("connected", connected);
+      }
+      function markUpdated(label) { state.lastUpdated = new Date(); $("data-status").textContent = `${label} · ${state.lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`; }
+      function applySnapshot(message) {
+        state.machines = message.machines || []; state.predictions = message.predictions || []; state.alerts = message.alerts || []; state.approvals = message.approvals || [];
+        setLiveStatus(message.realtime); markUpdated("Snapshot received"); renderAll();
+      }
+      function applyRealtimeUpdate(message) {
+        upsert(state.machines, message.telemetry); if (message.prediction) upsert(state.predictions, message.prediction);
+        state.alerts = state.alerts.filter((alert) => alert.machine_id !== message.telemetry.machine_id); if (message.alert) state.alerts.push(message.alert);
+        if (message.agent_review) { renderAgentAnalysis(message.agent_review); if (message.agent_review.approval) upsert(state.approvals, message.agent_review.approval, "approval_id"); }
+        markUpdated("Live update"); $("live-status").textContent = "Live MQTT feed connected"; $("live-dot").classList.add("connected"); renderAll();
+      }
+      function connectLiveFeed() {
+        if (state.socket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(state.socket.readyState)) return;
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"; state.socket = new WebSocket(`${protocol}//${window.location.host}/ws/operations`);
+        state.socket.onopen = () => { $("live-status").textContent = "Operations feed connected"; $("live-dot").classList.add("connected"); };
+        state.socket.onmessage = (event) => { try { const message = JSON.parse(event.data); if (message.type === "snapshot") applySnapshot(message); if (message.type === "realtime_update") applyRealtimeUpdate(message); } catch (error) { $("live-status").textContent = `Message error: ${error.message}`; } };
+        state.socket.onerror = () => state.socket.close();
+        state.socket.onclose = () => { $("live-status").textContent = "Feed reconnecting…"; $("live-dot").classList.remove("connected"); clearTimeout(state.reconnectTimer); state.reconnectTimer = setTimeout(connectLiveFeed, 3000); };
+      }
+      async function analyzeMachine(machine, button) {
+        const original = button.innerHTML; button.classList.add("loading"); button.textContent = "Running…";
+        $("analysis").innerHTML = '<div class="intelligence-placeholder"><div><span class="placeholder-orb"><svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6v5h-5M4 18v-5h5"/><path d="M6.1 9a7 7 0 0 1 11.5-2.6L20 11M4 13l2.4 4.6A7 7 0 0 0 17.9 15"/></svg></span><h4>Agents are investigating</h4><p>Coordinating telemetry, maintenance, production, and root-cause context.</p></div></div>';
+        $("intelligence").scrollIntoView({ behavior: "smooth", block: "center" });
+        try {
+          const result = await fetchJson("/api/v1/agents/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(machine) });
+          renderAgentAnalysis(result); showToast(`Analysis completed for ${machine.machine_id}.`); await load(false);
+        } catch (error) { $("analysis").innerHTML = emptyState(`Analysis failed: ${error.message}`, "alert"); showToast(`Analysis failed: ${error.message}`, "error"); }
+        finally { button.classList.remove("loading"); button.innerHTML = original; }
+      }
+      function openActionModal(action) {
+        state.activeAction = action; $("modal-title").textContent = action.title; $("modal-description").textContent = action.description; $("modal-submit").textContent = action.submitLabel;
+        $("modal-submit").className = `button ${action.decision === "REJECTED" ? "danger" : "primary"}`; $("action-form").reset(); $("modal-backdrop").classList.add("open"); window.setTimeout(() => $("operator-name").focus(), 50);
+      }
+      function closeActionModal() { $("modal-backdrop").classList.remove("open"); state.activeAction = null; }
+      async function submitAction(event) {
+        event.preventDefault(); if (!state.activeAction) return;
+        const operator = $("operator-name").value.trim(), note = $("operator-note").value.trim() || null, submit = $("modal-submit"); if (!operator) return;
+        submit.disabled = true; submit.textContent = "Saving…";
+        try {
+          if (state.activeAction.type === "acknowledge") {
+            await fetchJson(`/api/v1/alerts/${encodeURIComponent(state.activeAction.id)}/acknowledge`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acknowledged_by: operator, note }) }); showToast("Alert acknowledged and added to the operations log.");
+          } else {
+            await fetchJson(`/api/v1/approvals/${encodeURIComponent(state.activeAction.id)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision: state.activeAction.decision, reviewer: operator, notes: note }) }); showToast(`Recommendation ${state.activeAction.decision.toLowerCase()}.`);
+          }
+          closeActionModal(); await load(false);
+        } catch (error) { showToast(error.message, "error"); }
+        finally { submit.disabled = false; }
+      }
+      async function load(showFeedback = false) {
+        const refreshIcon = $("refresh-icon"); refreshIcon.classList.add("spin"); $("refresh").disabled = true;
+        try {
+          const [health, machines, predictions, alerts, approvals] = await Promise.all([fetchJson("/health"), fetchJson("/api/v1/machines"), fetchJson("/api/v1/predictions"), fetchJson("/api/v1/alerts"), fetchJson("/api/v1/approvals")]);
+          state.machines = machines.machines || []; state.predictions = predictions.predictions || []; state.alerts = alerts.alerts || []; state.approvals = approvals.approvals || [];
+          const dataLabel = health.data.live_telemetry_available ? "Live telemetry" : health.data.silver_telemetry_available ? "Silver telemetry" : "Telemetry unavailable";
+          markUpdated(dataLabel); setLiveStatus(health.realtime); renderAll(); if (showFeedback) showToast("Operations data is up to date.");
+        } catch (error) { $("data-status").textContent = `Loading failed · ${error.message}`; showToast(`Could not load operations data: ${error.message}`, "error"); }
+        finally { refreshIcon.classList.remove("spin"); $("refresh").disabled = false; }
+      }
+      function updateClock() { const now = new Date(); $("clock").textContent = now.toLocaleTimeString([], { hour12: false }); $("greeting-time").textContent = now.getHours() < 12 ? "morning" : now.getHours() < 18 ? "afternoon" : "evening"; }
+      $("refresh").addEventListener("click", () => load(true));
+      $("modal-close").addEventListener("click", closeActionModal); $("modal-cancel").addEventListener("click", closeActionModal);
+      $("modal-backdrop").addEventListener("click", (event) => { if (event.target === $("modal-backdrop")) closeActionModal(); });
+      $("action-form").addEventListener("submit", submitAction); document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeActionModal(); });
+      document.querySelectorAll(".nav a").forEach((link) => link.addEventListener("click", () => { document.querySelectorAll(".nav a").forEach((item) => item.classList.remove("active")); link.classList.add("active"); }));
+      updateClock(); window.setInterval(updateClock, 1000); load(); connectLiveFeed();
+    </script>
+  </body>
+</html>

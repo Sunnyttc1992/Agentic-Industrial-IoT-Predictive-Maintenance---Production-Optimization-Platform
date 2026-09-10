@@ -1,8 +1,8 @@
 import json
 import time
 
-from simulator.factory import Factory
-from ingestion.mqtt_publisher import MQTTPublisher
+from .simulator.factory import Factory
+from .ingestion.mqtt_publisher import MQTTPublisher
 
 
 def main():

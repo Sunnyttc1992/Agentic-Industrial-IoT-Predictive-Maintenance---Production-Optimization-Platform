@@ -293,12 +293,21 @@ df["ingestion_latency_ms"] = (
 # CHECK MISSING VALUES
 # ============================================================
 
-df["has_missing_values"] = (
+telemetry_quality_columns = [
+    "machine_id",
+    "timestamp",
+    "status",
+    "temperature_c",
+    "vibration_mm_s",
+    "current_amp",
+    "pressure_bar",
+    "rpm",
+]
 
-    df[required_columns]
+df["has_missing_values"] = (
+    df[telemetry_quality_columns]
     .isna()
     .any(axis=1)
-
 )
 
 

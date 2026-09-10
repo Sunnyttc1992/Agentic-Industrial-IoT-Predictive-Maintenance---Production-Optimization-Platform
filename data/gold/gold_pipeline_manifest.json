@@ -1,0 +1,38 @@
+{
+  "pipeline": "silver_to_gold",
+  "generated_at": "2026-09-04T15:13:01.504411+00:00",
+  "source_file": "D:\\Data Science Project\\Agentic Industrial IoT Predictive Maintenance & Production Optimization Platform\\data\\silver\\telemetry_clean.parquet",
+  "source_row_count": 2300,
+  "accepted_row_count": 840,
+  "rejected_row_count": 1460,
+  "machine_count": 10,
+  "source_min_timestamp": "2026-09-03T23:30:00.632111+00:00",
+  "source_max_timestamp": "2026-09-03T23:37:48.899518+00:00",
+  "active_statuses": [
+    "ACTIVE",
+    "OPERATING",
+    "RUNNING",
+    "UP"
+  ],
+  "max_observation_gap_seconds": 300.0,
+  "quality_checks": {
+    "status": "passed",
+    "checks": [
+      "non_empty_outputs",
+      "unique_non_null_primary_keys",
+      "accepted_row_reconciliation",
+      "percentage_ranges",
+      "production_duration_reconciliation"
+    ]
+  },
+  "outputs": {
+    "maintenance_daily": {
+      "file": "D:\\Data Science Project\\Agentic Industrial IoT Predictive Maintenance & Production Optimization Platform\\data\\gold\\maintenance_daily.parquet",
+      "row_count": 10
+    },
+    "production_hourly": {
+      "file": "D:\\Data Science Project\\Agentic Industrial IoT Predictive Maintenance & Production Optimization Platform\\data\\gold\\production_hourly.parquet",
+      "row_count": 10
+    }
+  }
+}
